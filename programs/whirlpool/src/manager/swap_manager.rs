@@ -268,7 +268,7 @@ pub fn swap(
     }))
 }
 
-fn calculate_fees(
+pub fn calculate_fees(
     fee_amount: u64,
     protocol_fee_rate: u16,
     curr_liquidity: u128,
@@ -291,13 +291,13 @@ fn calculate_fees(
     (next_protocol_fee, next_fee_growth_global_input)
 }
 
-fn calculate_protocol_fee(global_fee: u64, protocol_fee_rate: u16) -> u64 {
+pub fn calculate_protocol_fee(global_fee: u64, protocol_fee_rate: u16) -> u64 {
     ((global_fee as u128) * (protocol_fee_rate as u128) / PROTOCOL_FEE_RATE_MUL_VALUE)
         .try_into()
         .unwrap()
 }
 
-fn calculate_update(
+pub fn calculate_update(
     tick: &Tick,
     a_to_b: bool,
     liquidity: u128,
@@ -322,7 +322,7 @@ fn calculate_update(
     Ok((update, next_liquidity))
 }
 
-fn get_next_sqrt_prices(
+pub fn get_next_sqrt_prices(
     next_tick_index: i32,
     sqrt_price_limit: u128,
     a_to_b: bool,
