@@ -76,7 +76,7 @@ mod data_layout_tests {
 
         let mut config_data = [0u8; WhirlpoolsConfig::LEN];
         let mut offset = 0;
-        config_data[offset..offset + 8].copy_from_slice(&WhirlpoolsConfig::discriminator());
+        config_data[offset..offset + 8].copy_from_slice(&WhirlpoolsConfig::DISCRIMINATOR);
         offset += 8;
         config_data[offset..offset + 32].copy_from_slice(&config_fee_authority.to_bytes());
         offset += 32;

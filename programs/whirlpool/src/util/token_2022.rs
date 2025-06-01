@@ -7,6 +7,7 @@ use anchor_spl::token_2022::spl_token_2022::{
     self, extension::ExtensionType, instruction::AuthorityType,
 };
 use anchor_spl::token_2022::Token2022;
+use anchor_spl::token_2022_extensions::spl_pod;
 use anchor_spl::token_interface::{Mint, TokenAccount};
 use solana_program::program::{invoke, invoke_signed};
 use solana_program::system_instruction::{create_account, transfer};
@@ -15,6 +16,7 @@ use crate::constants::{
     WP_2022_METADATA_NAME_PREFIX, WP_2022_METADATA_SYMBOL, WP_2022_METADATA_URI_BASE,
 };
 use crate::state::*;
+use spl_token_metadata_interface::state::TokenMetadata as SplTokenMetadata;
 
 pub fn initialize_position_mint_2022<'info>(
     position_mint: &Signer<'info>,
@@ -127,45 +129,56 @@ pub fn initialize_token_metadata_extension<'info>(
 ) -> Result<()> {
     let mint_authority = position;
 
-    let metadata = spl_token_metadata_interface::state::TokenMetadata {
-        name,
-        symbol,
-        uri,
-        ..Default::default()
+    // Construct the metadata struct with all required fields for packing & initialization
+    let metadata_struct_for_init = SplTokenMetadata {
+        update_authority: spl_pod::optional_keys::OptionalNonZeroPubkey::try_from(Some(*metadata_update_authority.key))?,
+        mint: *position_mint.key,
+        name: name.clone(), // Use cloned values for the struct passed to initialize
+        symbol: symbol.clone(),
+        uri: uri.clone(),
+        additional_metadata: vec![],
     };
 
     // we need to add rent for TokenMetadata extension to reallocate space
     let token_mint_data = position_mint.try_borrow_data()?;
     let token_mint_unpacked =
         StateWithExtensions::<spl_token_2022::state::Mint>::unpack(&token_mint_data)?;
-    let new_account_len = token_mint_unpacked
-        .try_get_new_account_len::<spl_token_metadata_interface::state::TokenMetadata>(&metadata)?;
+
+    // Determine the set of extensions that will be on the mint after this operation.
+    let mut target_extensions = token_mint_unpacked.get_extension_types()?;
+    if !target_extensions.contains(&ExtensionType::TokenMetadata) {
+        target_extensions.push(ExtensionType::TokenMetadata);
+    }
+
+    // Calculate the total account length required for the Mint with these extensions.
+    let new_account_len = ExtensionType::try_calculate_account_len::<spl_token_2022::state::Mint>(&target_extensions)?;
+
     let new_rent_exempt_minimum = Rent::get()?.minimum_balance(new_account_len);
     let additional_rent = new_rent_exempt_minimum.saturating_sub(position_mint.lamports());
     drop(token_mint_data); // CPI call will borrow the account data
 
-    // transfer additional rent
-    invoke(
-        &transfer(funder.key, position_mint.key, additional_rent),
-        &[
-            funder.to_account_info(),
-            position_mint.to_account_info(),
-            system_program.to_account_info(),
-        ],
-    )?;
+    if additional_rent > 0 {
+        invoke(
+            &transfer(funder.key, position_mint.key, additional_rent),
+            &[
+                funder.to_account_info(),
+                position_mint.to_account_info(),
+                system_program.to_account_info(),
+            ],
+        )?;
+    }
 
     // initialize TokenMetadata extension
-    // update authority: WP_NFT_UPDATE_AUTH
     invoke_signed(
         &spl_token_metadata_interface::instruction::initialize(
             token_2022_program.key,
             position_mint.key,
-            metadata_update_authority.key,
-            position_mint.key,
-            &mint_authority.key(),
-            metadata.name,
-            metadata.symbol,
-            metadata.uri,
+            metadata_update_authority.key, // The update authority for the metadata
+            position_mint.key, // The mint account again, as metadata is stored there
+            &mint_authority.key(),    // The mint authority for the mint itself
+            metadata_struct_for_init.name, // Pass struct fields individually
+            metadata_struct_for_init.symbol,
+            metadata_struct_for_init.uri,
         ),
         &[
             position_mint.to_account_info(),

@@ -52,7 +52,7 @@ mod data_layout_tests {
 
         let mut fee_tier_data = [0u8; FeeTier::LEN];
         let mut offset = 0;
-        fee_tier_data[offset..offset + 8].copy_from_slice(&FeeTier::discriminator());
+        fee_tier_data[offset..offset + 8].copy_from_slice(&FeeTier::DISCRIMINATOR);
         offset += 8;
         fee_tier_data[offset..offset + 32].copy_from_slice(&fee_tier_whirlpools_config.to_bytes());
         offset += 32;
