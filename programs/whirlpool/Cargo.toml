@@ -21,7 +21,7 @@ anchor-spl = { version = "=0.31.1", features = ["metadata", "memo"] }
 spl-token = { version = "^8.0.0", features = ["no-entrypoint"] }
 spl-transfer-hook-interface = { version = "^0.10.0" }
 spl-token-metadata-interface = { version = "^0.7.0" }
-spl-pod = { version = "^0.2.0" }
+spl-pod = { version = "^0.7.1" }
 solana-program = { version = "^2.2.0" }
 uint = { version = "=0.9.5", default-features = false }
 arrayref = { version = "^0.3.8" }
